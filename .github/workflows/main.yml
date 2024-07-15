@@ -1,0 +1,40 @@
+trigger:
+  - main
+
+pr:
+  - main
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildJob
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - script: echo Building the project
+      displayName: 'Build'
+
+- stage: DeployWithApproval
+  condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+  jobs:
+  - deployment: Deploy
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'PRApproval'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo Deploying the project
+            displayName: 'Deploy'
+
+environments:
+- name: PRApproval
+  checks:
+    - pullRequest:
+        # Number of approvals required
+        requiredApproverCount: 2
+        # Allow approvals from the PR author
+        includeContributors: true
+        # Allow approvals from users with write access to the repo
+        includeRequestedForApprovers: true
