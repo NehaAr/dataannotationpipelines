@@ -1,40 +1,42 @@
 trigger:
-  - main
+- none
 
 pr:
-  - main
+- '*'
 
 stages:
 - stage: Build
   jobs:
   - job: BuildJob
-    pool:
-      vmImage: 'ubuntu-latest'
     steps:
-    - script: echo Building the project
-      displayName: 'Build'
+    - script: echo "Building the code..."
+      displayName: "Build step"
 
-- stage: DeployWithApproval
-  condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+- stage: WaitForApproval
+  dependsOn: Build
   jobs:
-  - deployment: Deploy
-    pool:
-      vmImage: 'ubuntu-latest'
-    environment: 'PRApproval'
+  - deployment: ApprovalJob
+    environment: 'PR-Approval'
     strategy:
       runOnce:
         deploy:
           steps:
-          - script: echo Deploying the project
-            displayName: 'Deploy'
+          - script: echo "Waiting for approval..."
+            displayName: "Approval stage"
 
-environments:
-- name: PRApproval
-  checks:
-    - pullRequest:
-        # Number of approvals required
-        requiredApproverCount: 2
-        # Allow approvals from the PR author
-        includeContributors: true
-        # Allow approvals from users with write access to the repo
-        includeRequestedForApprovers: true
+- stage: Deploy
+  dependsOn: WaitForApproval
+  jobs:
+  - job: DeployJob
+    steps:
+    - script: echo "Deploying the code..."
+      displayName: "Deploy step"
+
+resources:
+  environments:
+  - name: 'PR-Approval'
+    approvers:
+      approvals:
+        - identity: 'prauthor' # This will require approvals from the pull request reviewers.
+        - identity: 'prauthor'
+                  
